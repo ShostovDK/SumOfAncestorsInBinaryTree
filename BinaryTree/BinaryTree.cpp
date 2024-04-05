@@ -2,10 +2,11 @@
 #include <fstream>
 #include <cstdlib>
 #include <ctime>
-#include <chrono>
+#include <string>
+#include <iomanip>
 
 using namespace std;
-using namespace chrono;
+
 
 struct Node {
     int value;
@@ -23,6 +24,7 @@ Node* create_node(int value) {
     return node;
 }
 
+//Generating new binary tree
 void generate_tree(Node* root, int depth) {
     if (depth == 0) {
         return;
@@ -33,38 +35,84 @@ void generate_tree(Node* root, int depth) {
     generate_tree(root->right, depth - 1);
 }
 
-void calculate_sums(Node* root, int parent_sum) {
+//Calculating sums of node's parents
+void calculate_parent_sums(Node* root, int parent_sum) {
     if (root == nullptr) {
         return;
     }
+
     root->sum = parent_sum + root->value;
-    calculate_sums(root->left, root->sum);
-    calculate_sums(root->right, root->sum);
+    calculate_parent_sums(root->left, root->sum);
+    calculate_parent_sums(root->right, root->sum);
 }
 
-void print_tree(Node* root) {
+//Printing binary tree nodes with sums of ancestoers 
+void print_tree(Node* root, int level, int parent_sum) {
     if (root == nullptr) {
         return;
     }
-    cout << "Value: " << root->value << ", Sum: " << root->sum << endl;
-    print_tree(root->left);
-    print_tree(root->right);
+
+    print_tree(root->right, level + 1, root->sum);
+
+    string spaces(level * 4, ' ');
+    cout << spaces << "(" << parent_sum << ") " << setw(2) << root->value << " (" << root->sum << ")" << endl << endl;
+
+    print_tree(root->left, level + 1, root->sum);
+}
+
+//Save binary tree values into tree.txt file
+void save_tree_to_file(Node* root, ofstream& file) {
+    if (root == nullptr) {
+        file << "#\n";
+        return;
+    }
+    file << root->value << "\n";
+    save_tree_to_file(root->left, file);
+    save_tree_to_file(root->right, file);
+}
+
+//Loading binary tree values from tree.txt file
+Node* load_tree_from_file(ifstream& file) {
+    string value;
+    if (!getline(file, value)) {
+        return nullptr;
+    }
+    if (value == "#") {
+        return nullptr;
+    }
+    Node* node = create_node(stoi(value));
+    node->left = load_tree_from_file(file);
+    node->right = load_tree_from_file(file);
+
+    return node;
 }
 
 int main() {
     srand(time(nullptr));
 
-    auto start_time = high_resolution_clock::now();
+    clock_t start_time = clock();
 
+    //Loading binary tree values from file
+    //ifstream infile("tree.txt");
+    //Node* root = load_tree_from_file(infile);
+    //infile.close();
+
+    //Generating root and tree, if not loading from file
     Node* root = create_node(rand() % 100);
     generate_tree(root, 18);
-    calculate_sums(root, 0);
-    //print_tree(root);
 
-    auto end_time = high_resolution_clock::now();
-    auto duration = duration_cast<milliseconds>(end_time - start_time);
+    calculate_parent_sums(root, 0);
+    //print_tree(root, 0, 0);
 
-    cout << "Time taken by program: " << duration.count() << " milliseconds" << endl;
+    //Saving binary tree values into file
+    ofstream outfile("tree.txt");
+    save_tree_to_file(root, outfile);
+    outfile.close();
+
+    clock_t end_time = clock();
+    double elapsed_time = static_cast<double>(end_time - start_time) / CLOCKS_PER_SEC;
+
+    cout << "Time taken by program: " << elapsed_time << " seconds" << endl;
 
     return 0;
 }
